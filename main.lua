@@ -1,8 +1,9 @@
 --[[
-    ENI MOBILE HUB v4.1
-    Optimized Mobile Fly
-    Modern GUI
-    Delta Android Ready
+    ENI MOBILE HUB v4.2 FINAL
+    Fixed Mobile Fly
+    Floating Button
+    Draggable GUI
+    Modern Compact Design
 ]]
 
 --// SERVICES
@@ -18,7 +19,7 @@ local LP = Players.LocalPlayer
 
 --// REMOVE OLD
 pcall(function()
-    local old = CoreGui:FindFirstChild("ENI_MOBILE_V4")
+    local old = CoreGui:FindFirstChild("ENI_MOBILE_V42")
     if old then
         old:Destroy()
     end
@@ -69,11 +70,11 @@ end
 
 --// GUI
 local GUI = Instance.new("ScreenGui")
-GUI.Name = "ENI_MOBILE_V4"
+GUI.Name = "ENI_MOBILE_V42"
 GUI.ResetOnSpawn = false
 GUI.Parent = CoreGui
 
---// FLOATING BUTTON
+--// FLOAT BUTTON
 local Float = Instance.new("TextButton")
 Float.Size = UDim2.new(0,70,0,70)
 Float.Position = UDim2.new(0,20,0.5,-35)
@@ -91,7 +92,7 @@ FloatStroke.Color = Color3.fromRGB(180,160,255)
 FloatStroke.Thickness = 2
 FloatStroke.Parent = Float
 
---// MAIN
+--// MAIN GUI
 local Main = Instance.new("Frame")
 Main.Size = UDim2.new(0,430,0,280)
 Main.Position = UDim2.new(0.5,-215,0.5,-140)
@@ -115,81 +116,19 @@ Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
 Title.Parent = Main
 
---// TABS
-local Tabs = Instance.new("Frame")
-Tabs.Size = UDim2.new(1,-20,0,40)
-Tabs.Position = UDim2.new(0,10,0,45)
-Tabs.BackgroundTransparency = 1
-Tabs.Parent = Main
-
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.FillDirection = Enum.FillDirection.Horizontal
-TabLayout.Padding = UDim.new(0,8)
-TabLayout.Parent = Tabs
-
 --// CONTENT
 local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1,-20,1,-100)
-Content.Position = UDim2.new(0,10,0,90)
+Content.Size = UDim2.new(1,-20,1,-60)
+Content.Position = UDim2.new(0,10,0,50)
 Content.BackgroundTransparency = 1
 Content.Parent = Main
 
---// PAGES
-local Pages = {}
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0,8)
+Layout.Parent = Content
 
-local function CreatePage(name)
-    local page = Instance.new("Frame")
-    page.Size = UDim2.new(1,0,1,0)
-    page.BackgroundTransparency = 1
-    page.Visible = false
-    page.Parent = Content
-
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0,8)
-    layout.Parent = page
-
-    Pages[name] = page
-
-    return page
-end
-
-local function SwitchTab(name)
-    for _,v in pairs(Pages) do
-        v.Visible = false
-    end
-
-    Pages[name].Visible = true
-end
-
-local function CreateTab(name)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0,120,1,0)
-    b.BackgroundColor3 = Color3.fromRGB(35,35,50)
-    b.Text = name
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.Parent = Tabs
-
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
-
-    b.MouseButton1Click:Connect(function()
-        SwitchTab(name)
-    end)
-end
-
-local MovementPage = CreatePage("Movement")
-local TeleportPage = CreatePage("Teleport")
-local UtilityPage = CreatePage("Utility")
-
-CreateTab("Movement")
-CreateTab("Teleport")
-CreateTab("Utility")
-
-SwitchTab("Movement")
-
---// BUTTON
-local function Button(parent, text, callback)
+--// BUTTON CREATOR
+local function Button(text, callback)
     local b = Instance.new("TextButton")
     b.Size = UDim2.new(1,0,0,40)
     b.BackgroundColor3 = Color3.fromRGB(32,32,44)
@@ -197,7 +136,7 @@ local function Button(parent, text, callback)
     b.TextColor3 = Color3.new(1,1,1)
     b.Font = Enum.Font.GothamBold
     b.TextSize = 15
-    b.Parent = parent
+    b.Parent = Content
 
     Instance.new("UICorner", b).CornerRadius = UDim.new(0,12)
 
@@ -237,7 +176,7 @@ local function StartFly()
     h.AutoRotate = false
 
     FlyVel = Instance.new("BodyVelocity")
-    FlyVel.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
+    FlyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     FlyVel.Velocity = Vector3.zero
     FlyVel.Parent = hrp
 
@@ -256,6 +195,7 @@ local function StopFly()
 
     if FlyVel then
         FlyVel:Destroy()
+        FlyVel = nil
     end
 
     Notify("ENI","Fly Disabled")
@@ -272,52 +212,14 @@ Connect(RunService.RenderStepped,function()
         return
     end
 
-    local cam = Workspace.CurrentCamera
-
-    if not cam then
-        return
-    end
-
     local move = h.MoveDirection
 
-    local cameraLook = cam.CFrame.LookVector
-    local cameraRight = cam.CFrame.RightVector
-
-    local flatLook = Vector3.new(
-        cameraLook.X,
-        0,
-        cameraLook.Z
-    )
-
-    local flatRight = Vector3.new(
-        cameraRight.X,
-        0,
-        cameraRight.Z
-    )
-
-    if flatLook.Magnitude > 0 then
-        flatLook = flatLook.Unit
-    end
-
-    if flatRight.Magnitude > 0 then
-        flatRight = flatRight.Unit
-    end
-
-    local velocity =
-        (flatLook * move.Z * -1) +
-        (flatRight * move.X)
-
-    if velocity.Magnitude > 0 then
-        velocity = velocity.Unit
-    end
-
     FlyVel.Velocity = Vector3.new(
-        velocity.X * State.FlySpeed,
-        move.Y * State.FlySpeed,
-        velocity.Z * State.FlySpeed
+        move.X * State.FlySpeed,
+        0,
+        move.Z * State.FlySpeed
     )
 
-    -- anti spin
     hrp.AssemblyAngularVelocity = Vector3.zero
     hrp.RotVelocity = Vector3.zero
 end)
@@ -335,124 +237,6 @@ Connect(RunService.Stepped,function()
         end
     end
 end)
-
---// MOVEMENT
-Button(MovementPage,"Toggle Fly",function()
-    if State.Fly then
-        StopFly()
-    else
-        StartFly()
-    end
-end)
-
-Button(MovementPage,"Toggle Noclip",function()
-    State.Noclip = not State.Noclip
-    Notify("ENI","Noclip: "..tostring(State.Noclip))
-end)
-
-Button(MovementPage,"Fly Speed +",function()
-    State.FlySpeed += 10
-    Notify("ENI","Speed: "..State.FlySpeed)
-end)
-
-Button(MovementPage,"Fly Speed -",function()
-    State.FlySpeed -= 10
-    Notify("ENI","Speed: "..State.FlySpeed)
-end)
-
---// TP
-Button(TeleportPage,"Toggle ClickTP",function()
-    State.ClickTP = not State.ClickTP
-    Notify("ENI","ClickTP: "..tostring(State.ClickTP))
-end)
-
---// UTILITY
-Button(UtilityPage,"Hide GUI",function()
-    Main.Visible = false
-end)
-
-Button(UtilityPage,"Destroy Script",function()
-    for _,v in pairs(Connections) do
-        pcall(function()
-            v:Disconnect()
-        end)
-    end
-
-    GUI:Destroy()
-end)
-
---// FLOAT TOGGLE
-Float.MouseButton1Click:Connect(function()
-    Main.Visible = not Main.Visible
-end)
-
---// FLOAT DRAG
-do
-    local dragging = false
-    local dragStart
-    local startPos
-
-    Float.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = Float.Position
-        end
-    end)
-
-    Float.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    Connect(UIS.InputChanged,function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStart
-
-            Float.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
---// MAIN DRAG
-do
-    local dragging = false
-    local dragStart
-    local startPos
-
-    Title.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = Main.Position
-        end
-    end)
-
-    Title.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    Connect(UIS.InputChanged,function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStart
-
-            Main.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
 
 --// CLICK TP
 Connect(UIS.InputBegan,function(input,gp)
@@ -493,5 +277,121 @@ Connect(UIS.InputBegan,function(input,gp)
         end
     end
 end)
+
+--// BUTTONS
+Button("Toggle Fly",function()
+    if State.Fly then
+        StopFly()
+    else
+        StartFly()
+    end
+end)
+
+Button("Toggle Noclip",function()
+    State.Noclip = not State.Noclip
+    Notify("ENI","Noclip: "..tostring(State.Noclip))
+end)
+
+Button("Toggle ClickTP",function()
+    State.ClickTP = not State.ClickTP
+    Notify("ENI","ClickTP: "..tostring(State.ClickTP))
+end)
+
+Button("Fly Speed +",function()
+    State.FlySpeed += 10
+    Notify("ENI","Speed: "..State.FlySpeed)
+end)
+
+Button("Fly Speed -",function()
+    State.FlySpeed -= 10
+    Notify("ENI","Speed: "..State.FlySpeed)
+end)
+
+Button("Hide GUI",function()
+    Main.Visible = false
+end)
+
+Button("Destroy Script",function()
+    for _,v in pairs(Connections) do
+        pcall(function()
+            v:Disconnect()
+        end)
+    end
+
+    GUI:Destroy()
+end)
+
+--// FLOAT BUTTON TOGGLE
+Float.MouseButton1Click:Connect(function()
+    Main.Visible = not Main.Visible
+end)
+
+--// FLOAT BUTTON DRAG
+do
+    local dragging = false
+    local dragStart
+    local startPos
+
+    Float.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Float.Position
+        end
+    end)
+
+    Float.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    Connect(UIS.InputChanged,function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStart
+
+            Float.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+--// MAIN GUI DRAG
+do
+    local dragging = false
+    local dragStart
+    local startPos
+
+    Title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+        end
+    end)
+
+    Title.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    Connect(UIS.InputChanged,function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - dragStart
+
+            Main.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
 
 Notify("ENI MOBILE HUB","Loaded Successfully")
