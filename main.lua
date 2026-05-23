@@ -1,7 +1,7 @@
 --[[
-    ENI MOBILE HUB v5
-    FULL MOBILE REWORK
-    Tabs + Modern GUI + Better Fly
+    ENI MOBILE HUB v5.1
+    FIXED MOBILE FLY
+    Tabs + Floating Button + Better Physics
 ]]
 
 --// SERVICES
@@ -72,7 +72,7 @@ GUI.Name = "ENI_MOBILE_V5"
 GUI.ResetOnSpawn = false
 GUI.Parent = CoreGui
 
---// FLOATING BUTTON
+--// FLOAT BUTTON
 local Float = Instance.new("TextButton")
 Float.Size = UDim2.new(0,70,0,70)
 Float.Position = UDim2.new(0,20,0.5,-35)
@@ -239,6 +239,8 @@ local function StartFly()
     FlyVel.Velocity = Vector3.zero
     FlyVel.Parent = hrp
 
+    hrp.AssemblyLinearVelocity = Vector3.zero
+
     Notify("ENI","Fly Enabled")
 end
 
@@ -260,6 +262,7 @@ local function StopFly()
     Notify("ENI","Fly Disabled")
 end
 
+--// FIXED FLY LOOP
 Connect(RunService.RenderStepped,function()
     if not State.Fly then
         return
@@ -278,26 +281,22 @@ Connect(RunService.RenderStepped,function()
     end
 
     local move = h.MoveDirection
+    local camLook = cam.CFrame.LookVector
 
-    -- ВПЕРЕД/НАЗАД ПО КАМЕРЕ
-    local velocity = Vector3.new(
-        move.X,
-        0,
-        move.Z
-    ) * State.FlySpeed
+    local velocity = Vector3.zero
 
-    -- ВВЕРХ/ВНИЗ КАМЕРОЙ
-    local lookY = cam.CFrame.LookVector.Y
-
-    velocity += Vector3.new(
-        0,
-        lookY * State.FlySpeed,
-        0
-    )
+    if move.Magnitude > 0 then
+        velocity =
+            Vector3.new(
+                camLook.X,
+                math.clamp(camLook.Y, -0.6, 0.6),
+                camLook.Z
+            ).Unit * State.FlySpeed
+    end
 
     FlyVel.Velocity = velocity
 
-    -- АНТИ КРУТКА
+    -- ANTI SHAKE
     hrp.AssemblyAngularVelocity = Vector3.zero
     hrp.RotVelocity = Vector3.zero
 end)
