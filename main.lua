@@ -1,7 +1,8 @@
 --[[
-    ENI MOBILE HUB v4
-    Modern Mobile GUI / Floating Button / Tabs / Better Fly
-    Optimized for Delta Android
+    ENI MOBILE HUB v4.1
+    Optimized Mobile Fly
+    Modern GUI
+    Delta Android Ready
 ]]
 
 --// SERVICES
@@ -15,9 +16,12 @@ local Workspace = game:GetService("Workspace")
 
 local LP = Players.LocalPlayer
 
---// CLEAN OLD
+--// REMOVE OLD
 pcall(function()
-    CoreGui:FindFirstChild("ENI_MOBILE_V4"):Destroy()
+    local old = CoreGui:FindFirstChild("ENI_MOBILE_V4")
+    if old then
+        old:Destroy()
+    end
 end)
 
 --// STATE
@@ -25,10 +29,7 @@ local State = {
     Fly = false,
     Noclip = false,
     ClickTP = false,
-    GUIOpen = true,
-    FlySpeed = 90,
-    FlyUp = false,
-    FlyDown = false,
+    FlySpeed = 90
 }
 
 --// CONNECTIONS
@@ -59,7 +60,9 @@ local function GetChar()
     local h = c:FindFirstChildOfClass("Humanoid")
     local hrp = c:FindFirstChild("HumanoidRootPart")
 
-    if not h or not hrp then return end
+    if not h or not hrp then
+        return
+    end
 
     return c, h, hrp
 end
@@ -70,11 +73,11 @@ GUI.Name = "ENI_MOBILE_V4"
 GUI.ResetOnSpawn = false
 GUI.Parent = CoreGui
 
---// FLOAT BUTTON
+--// FLOATING BUTTON
 local Float = Instance.new("TextButton")
 Float.Size = UDim2.new(0,70,0,70)
 Float.Position = UDim2.new(0,20,0.5,-35)
-Float.BackgroundColor3 = Color3.fromRGB(120,80,255)
+Float.BackgroundColor3 = Color3.fromRGB(110,80,255)
 Float.Text = "ENI"
 Float.TextColor3 = Color3.new(1,1,1)
 Float.Font = Enum.Font.GothamBold
@@ -98,25 +101,13 @@ Main.Parent = GUI
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,16)
 
 local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(90,70,180)
+Stroke.Color = Color3.fromRGB(80,60,180)
 Stroke.Thickness = 2
 Stroke.Parent = Main
 
---// SHADOW
-local Shadow = Instance.new("ImageLabel")
-Shadow.Size = UDim2.new(1,60,1,60)
-Shadow.Position = UDim2.new(0,-30,0,-30)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://1316045217"
-Shadow.ImageTransparency = 0.5
-Shadow.ScaleType = Enum.ScaleType.Slice
-Shadow.SliceCenter = Rect.new(10,10,118,118)
-Shadow.ZIndex = 0
-Shadow.Parent = Main
-
 --// TITLE
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1,0,0,42)
+Title.Size = UDim2.new(1,0,0,45)
 Title.BackgroundTransparency = 1
 Title.Text = "⚡ ENI MOBILE HUB"
 Title.TextColor3 = Color3.new(1,1,1)
@@ -163,7 +154,7 @@ local function CreatePage(name)
 end
 
 local function SwitchTab(name)
-    for i,v in pairs(Pages) do
+    for _,v in pairs(Pages) do
         v.Visible = false
     end
 
@@ -242,12 +233,13 @@ local function StartFly()
 
     State.Fly = true
 
+    h.PlatformStand = true
+    h.AutoRotate = false
+
     FlyVel = Instance.new("BodyVelocity")
     FlyVel.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
     FlyVel.Velocity = Vector3.zero
     FlyVel.Parent = hrp
-
-    h.PlatformStand = true
 
     Notify("ENI","Fly Enabled")
 end
@@ -259,6 +251,7 @@ local function StopFly()
 
     if h then
         h.PlatformStand = false
+        h.AutoRotate = true
     end
 
     if FlyVel then
@@ -269,28 +262,64 @@ local function StopFly()
 end
 
 Connect(RunService.RenderStepped,function()
-    if not State.Fly then return end
-
-    local c,h,hrp = GetChar()
-    if not hrp then return end
-
-    local cam = Workspace.CurrentCamera
-    local dir = h.MoveDirection
-
-    local y = 0
-
-    if State.FlyUp then
-        y = 1
-    elseif State.FlyDown then
-        y = -1
+    if not State.Fly then
+        return
     end
 
-    local vel =
-        (cam.CFrame.LookVector * dir.Z * -1) +
-        (cam.CFrame.RightVector * dir.X) +
-        Vector3.new(0,y,0)
+    local c,h,hrp = GetChar()
 
-    FlyVel.Velocity = vel * State.FlySpeed
+    if not hrp then
+        return
+    end
+
+    local cam = Workspace.CurrentCamera
+
+    if not cam then
+        return
+    end
+
+    local move = h.MoveDirection
+
+    local cameraLook = cam.CFrame.LookVector
+    local cameraRight = cam.CFrame.RightVector
+
+    local flatLook = Vector3.new(
+        cameraLook.X,
+        0,
+        cameraLook.Z
+    )
+
+    local flatRight = Vector3.new(
+        cameraRight.X,
+        0,
+        cameraRight.Z
+    )
+
+    if flatLook.Magnitude > 0 then
+        flatLook = flatLook.Unit
+    end
+
+    if flatRight.Magnitude > 0 then
+        flatRight = flatRight.Unit
+    end
+
+    local velocity =
+        (flatLook * move.Z * -1) +
+        (flatRight * move.X)
+
+    if velocity.Magnitude > 0 then
+        velocity = velocity.Unit
+    end
+
+    FlyVel.Velocity = Vector3.new(
+        velocity.X * State.FlySpeed,
+        move.Y * State.FlySpeed,
+        velocity.Z * State.FlySpeed
+    )
+
+    -- anti spin
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    hrp.RotVelocity = Vector3.zero
 end)
 
 --// NOCLIP
@@ -307,7 +336,7 @@ Connect(RunService.Stepped,function()
     end
 end)
 
---// MOVEMENT BUTTONS
+--// MOVEMENT
 Button(MovementPage,"Toggle Fly",function()
     if State.Fly then
         StopFly()
@@ -424,40 +453,6 @@ do
         end
     end)
 end
-
---// MOBILE FLY UP DOWN
-local Up = Instance.new("TextButton")
-Up.Size = UDim2.new(0,60,0,60)
-Up.Position = UDim2.new(1,-80,1,-150)
-Up.BackgroundColor3 = Color3.fromRGB(80,60,180)
-Up.Text = "↑"
-Up.TextColor3 = Color3.new(1,1,1)
-Up.Font = Enum.Font.GothamBold
-Up.TextSize = 28
-Up.Parent = GUI
-
-Instance.new("UICorner",Up).CornerRadius = UDim.new(1,0)
-
-local Down = Up:Clone()
-Down.Text = "↓"
-Down.Position = UDim2.new(1,-80,1,-80)
-Down.Parent = GUI
-
-Up.MouseButton1Down:Connect(function()
-    State.FlyUp = true
-end)
-
-Up.MouseButton1Up:Connect(function()
-    State.FlyUp = false
-end)
-
-Down.MouseButton1Down:Connect(function()
-    State.FlyDown = true
-end)
-
-Down.MouseButton1Up:Connect(function()
-    State.FlyDown = false
-end)
 
 --// CLICK TP
 Connect(UIS.InputBegan,function(input,gp)
