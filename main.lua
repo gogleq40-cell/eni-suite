@@ -1,6 +1,6 @@
 --[[
- ENI MOBILE HUB v6.1
- MODERN UI + FIXED 3D MOBILE FLY (UP/DOWN)
+ ENI MOBILE HUB v6.2
+ MODERN UI + PERFECT 3D MOBILE FLY (UP/DOWN FIXED)
 ]]
 
 --// SERVICES
@@ -63,7 +63,7 @@ GUI.Name = "ENI_MOBILE"
 GUI.ResetOnSpawn = false
 GUI.Parent = ParentTarget
 
---// FLOAT BUTTON 
+--// FLOAT BUTTON
 local Float = Instance.new("TextButton")
 Float.Size = UDim2.new(0, 50, 0, 50)
 Float.Position = UDim2.new(0, 15, 0.5, -25)
@@ -270,7 +270,7 @@ Connect(LP.CharacterAdded, function()
 	if State.Noclip then State.Noclip = false end
 end)
 
---// 3D MOBILE FLY LOOP
+--// 3D MOBILE FLY LOOP (PERFECTED)
 Connect(RunService.RenderStepped,function()
 	if not State.Fly or not FlyVel then return end
 	local c,h,hrp = GetChar()
@@ -282,18 +282,22 @@ Connect(RunService.RenderStepped,function()
 	if move.Magnitude > 0 then
 		local cam = Workspace.CurrentCamera
 		if cam then
-			-- Создаем вектор направления камеры, игнорируя наклон (Pitch)
-			local lookFlat = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+			local camCF = cam.CFrame
 			
-			if lookFlat.Magnitude > 0.001 then
-				-- Превращаем джойстик (MoveDirection) в 3D направление относительно камеры
-				local camYaw = CFrame.lookAt(Vector3.zero, lookFlat.Unit)
-				local relMove = camYaw:VectorToObjectSpace(move)
-				
-				-- Накладываем джойстик на настоящий наклон камеры
-				velocity = cam.CFrame:VectorToWorldSpace(relMove) * State.FlySpeed
-			else
-				velocity = move * State.FlySpeed
+			-- Получаем только угол поворота влево-вправо (Yaw)
+			local _, yaw, _ = camCF:ToOrientation()
+			
+			-- Создаем "плоский" CFrame без наклона вверх/вниз
+			local flatCF = CFrame.Angles(0, yaw, 0)
+			
+			-- Преобразуем движение джойстика в локальные оси (вперед/назад, влево/вправо)
+			local localInput = flatCF:VectorToObjectSpace(move)
+			
+			-- Накладываем эти оси на реальный 3D-угол камеры
+			local move3D = camCF:VectorToWorldSpace(localInput)
+			
+			if move3D.Magnitude > 0 then
+				velocity = move3D.Unit * State.FlySpeed
 			end
 		else
 			velocity = move * State.FlySpeed
@@ -415,5 +419,5 @@ end
 MakeDraggable(Float, Float)
 MakeDraggable(Main, Title)
 
-Notify("ENI HUB", "Loaded v6.1")
+Notify("ENI HUB", "Loaded v6.2")
 Main.Visible = true
