@@ -1,25 +1,8 @@
 --[[
-    ENI MOBILE HUB v6.0
-    Optimized + Fixed + Modernized
-
-    Improvements:
-    - Respawn-safe
-    - Modern fly system
-    - Optimized noclip
-    - Better mobile support
-    - Memory leak fixes
-    - Anti double execution
-    - UI scaling improvements
-    - Safe cleanup
-    - Reduced lag
+ ENI MOBILE HUB v5.3
+ FIXED MOBILE FLY, DOUBLE-TAP TP, LINEAR VELOCITY
+ Tabs + Floating Button + Better Physics
 ]]
-
---// ANTI DOUBLE EXECUTION
-if getgenv().ENI_MOBILE_LOADED then
-    return
-end
-
-getgenv().ENI_MOBILE_LOADED = true
 
 --// SERVICES
 local Players = game:GetService("Players")
@@ -30,95 +13,77 @@ local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
---// PLAYER
 local LP = Players.LocalPlayer
 
---// REMOVE OLD GUI
+--// SECURE PARENTING
+local ParentTarget = (gethui and gethui()) or CoreGui or LP:WaitForChild("PlayerGui")
+
+--// REMOVE OLD
 pcall(function()
-    local old = CoreGui:FindFirstChild("ENI_MOBILE_V6")
-    if old then
-        old:Destroy()
-    end
+	local old = ParentTarget:FindFirstChild("ENI_MOBILE_V5")
+	if old then
+		old:Destroy()
+	end
 end)
 
 --// STATE
 local State = {
-    Fly = false,
-    Noclip = false,
-    ClickTP = false,
-    FlySpeed = 90
+	Fly = false,
+	Noclip = false,
+	ClickTP = false,
+	FlySpeed = 90
 }
 
 --// CONNECTIONS
 local Connections = {}
 
 local function Connect(signal, func)
-    local c = signal:Connect(func)
-    table.insert(Connections, c)
-    return c
-end
-
-local function DisconnectAll()
-    for _,v in ipairs(Connections) do
-        pcall(function()
-            v:Disconnect()
-        end)
-    end
-
-    table.clear(Connections)
+	local c = signal:Connect(func)
+	table.insert(Connections, c)
+	return c
 end
 
 --// NOTIFY
 local function Notify(title, text)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = 3
-        })
-    end)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = title,
+			Text = text,
+			Duration = 4
+		})
+	end)
 end
 
---// CHARACTER SYSTEM
-local Character
-local Humanoid
-local RootPart
+--// CHARACTER
+local function GetChar()
+	local c = LP.Character
+	if not c then return end
 
-local function UpdateCharacter()
-    Character = LP.Character or LP.CharacterAdded:Wait()
-    Humanoid = Character:WaitForChild("Humanoid")
-    RootPart = Character:WaitForChild("HumanoidRootPart")
+	local h = c:FindFirstChildOfClass("Humanoid")
+	local hrp = c:FindFirstChild("HumanoidRootPart")
+
+	if not h or not hrp then
+		return
+	end
+
+	return c, h, hrp
 end
 
-UpdateCharacter()
-
-Connect(LP.CharacterAdded, function()
-    task.wait(1)
-
-    UpdateCharacter()
-
-    State.Fly = false
-    State.Noclip = false
-end)
-
---// GUI
+--// GUI SETUP
 local GUI = Instance.new("ScreenGui")
-GUI.Name = "ENI_MOBILE_V6"
+GUI.Name = "ENI_MOBILE_V5"
 GUI.ResetOnSpawn = false
-GUI.IgnoreGuiInset = true
-GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-GUI.Parent = CoreGui
+GUI.Parent = ParentTarget
 
 --// FLOAT BUTTON
 local Float = Instance.new("TextButton")
-Float.Size = UDim2.fromOffset(70,70)
+Float.Size = UDim2.new(0,70,0,70)
 Float.Position = UDim2.new(0,20,0.5,-35)
 Float.BackgroundColor3 = Color3.fromRGB(110,80,255)
 Float.Text = "ENI"
 Float.TextColor3 = Color3.new(1,1,1)
 Float.Font = Enum.Font.GothamBold
 Float.TextSize = 22
-Float.AutoButtonColor = false
 Float.Parent = GUI
 
 Instance.new("UICorner", Float).CornerRadius = UDim.new(1,0)
@@ -128,12 +93,11 @@ FloatStroke.Color = Color3.fromRGB(180,160,255)
 FloatStroke.Thickness = 2
 FloatStroke.Parent = Float
 
---// MAIN WINDOW
+--// MAIN
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0.9,0,0.6,0)
-Main.Position = UDim2.new(0.05,0,0.2,0)
+Main.Size = UDim2.new(0,460,0,300)
+Main.Position = UDim2.new(0.5,-230,0.5,-150)
 Main.BackgroundColor3 = Color3.fromRGB(20,20,28)
-Main.Visible = true
 Main.Parent = GUI
 
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,16)
@@ -147,7 +111,7 @@ MainStroke.Parent = Main
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1,0,0,45)
 Title.BackgroundTransparency = 1
-Title.Text = "⚡ ENI MOBILE HUB v6"
+Title.Text = "⚡ ENI MOBILE HUB"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
@@ -176,48 +140,42 @@ Content.Parent = Main
 local Pages = {}
 
 local function CreatePage(name)
-    local page = Instance.new("Frame")
-    page.Size = UDim2.new(1,0,1,0)
-    page.BackgroundTransparency = 1
-    page.Visible = false
-    page.Parent = Content
+	local page = Instance.new("Frame")
+	page.Size = UDim2.new(1,0,1,0)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = Content
 
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0,8)
-    layout.Parent = page
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0,8)
+	layout.Parent = page
 
-    Pages[name] = page
-    return page
+	Pages[name] = page
+	return page
 end
 
 local function SwitchPage(name)
-    for _,v in pairs(Pages) do
-        v.Visible = false
-    end
-
-    if Pages[name] then
-        Pages[name].Visible = true
-    end
+	for _,v in pairs(Pages) do
+		v.Visible = false
+	end
+	Pages[name].Visible = true
 end
 
 local function CreateTab(name)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0,120,1,0)
-    b.BackgroundColor3 = Color3.fromRGB(35,35,50)
-    b.Text = name
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.AutoButtonColor = false
-    b.Parent = TabBar
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0,130,1,0)
+	b.BackgroundColor3 = Color3.fromRGB(35,35,50)
+	b.Text = name
+	b.TextColor3 = Color3.new(1,1,1)
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 14
+	b.Parent = TabBar
 
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0,10)
 
-    b.MouseButton1Click:Connect(function()
-        SwitchPage(name)
-    end)
-
-    return b
+	b.MouseButton1Click:Connect(function()
+		SwitchPage(name)
+	end)
 end
 
 local MovementPage = CreatePage("Movement")
@@ -230,359 +188,284 @@ CreateTab("Utility")
 
 SwitchPage("Movement")
 
---// BUTTON CREATOR
+--// BUTTON
 local function Button(parent, text, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1,0,0,42)
-    b.BackgroundColor3 = Color3.fromRGB(32,32,44)
-    b.Text = text
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 15
-    b.AutoButtonColor = false
-    b.Parent = parent
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1,0,0,40)
+	b.BackgroundColor3 = Color3.fromRGB(32,32,44)
+	b.Text = text
+	b.TextColor3 = Color3.new(1,1,1)
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 15
+	b.Parent = parent
 
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,12)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0,12)
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(80,60,180)
-    stroke.Parent = b
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(80,60,180)
+	stroke.Parent = b
 
-    b.MouseButton1Click:Connect(function()
+	b.MouseButton1Click:Connect(function()
+		TweenService:Create(b,TweenInfo.new(.15),{
+			BackgroundColor3 = Color3.fromRGB(70,50,180)
+		}):Play()
 
-        TweenService:Create(
-            b,
-            TweenInfo.new(0.12),
-            {
-                BackgroundColor3 = Color3.fromRGB(70,50,180)
-            }
-        ):Play()
+		task.wait(.1)
 
-        task.wait(0.1)
+		TweenService:Create(b,TweenInfo.new(.2),{
+			BackgroundColor3 = Color3.fromRGB(32,32,44)
+		}):Play()
 
-        TweenService:Create(
-            b,
-            TweenInfo.new(0.2),
-            {
-                BackgroundColor3 = Color3.fromRGB(32,32,44)
-            }
-        ):Play()
+		callback()
+	end)
 
-        pcall(callback)
-    end)
-
-    return b
+	return b
 end
 
---// FLY SYSTEM
-local FlyConnection
-
-local function StartFly()
-
-    if State.Fly then
-        return
-    end
-
-    if not RootPart or not Humanoid then
-        return
-    end
-
-    State.Fly = true
-
-    Humanoid.PlatformStand = false
-
-    FlyConnection = RunService.RenderStepped:Connect(function()
-
-        if not State.Fly then
-            return
-        end
-
-        if not RootPart or not Humanoid then
-            return
-        end
-
-        local cam = Workspace.CurrentCamera
-
-        if not cam then
-            return
-        end
-
-        local move = Humanoid.MoveDirection
-
-        if move.Magnitude > 0 then
-
-            RootPart.AssemblyLinearVelocity =
-                cam.CFrame.LookVector * State.FlySpeed
-
-        else
-
-            RootPart.AssemblyLinearVelocity = Vector3.zero
-        end
-
-        RootPart.AssemblyAngularVelocity = Vector3.zero
-    end)
-
-    Notify("ENI","Fly Enabled")
-end
+--// FLY 
+local FlyVel
+local FlyAtt
 
 local function StopFly()
+	State.Fly = false
+	State.Noclip = false -- Выключаем Noclip вместе с полетом
 
-    State.Fly = false
+	local c,h = GetChar()
+	if h then
+		h.PlatformStand = false
+	end
 
-    if FlyConnection then
-        FlyConnection:Disconnect()
-        FlyConnection = nil
-    end
+	if FlyVel then FlyVel:Destroy() FlyVel = nil end
+	if FlyAtt then FlyAtt:Destroy() FlyAtt = nil end
 
-    if RootPart then
-        RootPart.AssemblyLinearVelocity = Vector3.zero
-    end
-
-    Notify("ENI","Fly Disabled")
+	Notify("ENI","Fly & Noclip Disabled")
 end
 
---// NOCLIP
-local NoclipParts = {}
+local function StartFly()
+	if State.Fly then return end
 
-local function CacheParts()
+	local c,h,hrp = GetChar()
+	if not hrp then return end
 
-    table.clear(NoclipParts)
+	State.Fly = true
+	State.Noclip = true -- Включаем Noclip вместе с полетом
+	h.PlatformStand = true
 
-    if not Character then
-        return
-    end
+	FlyAtt = Instance.new("Attachment")
+	FlyAtt.Parent = hrp
 
-    for _,v in ipairs(Character:GetChildren()) do
-        if v:IsA("BasePart") then
-            table.insert(NoclipParts, v)
-        end
-    end
+	FlyVel = Instance.new("LinearVelocity")
+	FlyVel.Attachment0 = FlyAtt
+	FlyVel.MaxForce = math.huge
+	FlyVel.VectorVelocity = Vector3.zero
+	FlyVel.RelativeTo = Enum.ActuatorRelativeTo.World
+	FlyVel.Parent = hrp
+
+	hrp.AssemblyLinearVelocity = Vector3.zero
+
+	Notify("ENI","Fly & Noclip Enabled")
 end
 
-CacheParts()
-
+--// Очистка при смерти
 Connect(LP.CharacterAdded, function()
-    task.wait(1)
-    CacheParts()
+	if State.Fly then
+		StopFly()
+	end
+	if State.Noclip then
+		State.Noclip = false
+	end
 end)
 
-Connect(RunService.Stepped, function()
+--// FIXED FLY LOOP
+Connect(RunService.RenderStepped,function()
+	if not State.Fly or not FlyVel then return end
 
-    if not State.Noclip then
-        return
-    end
+	local c,h,hrp = GetChar()
+	if not hrp then return end
 
-    for _,part in ipairs(NoclipParts) do
-        if part and part.Parent then
-            part.CanCollide = false
-        end
-    end
+	local move = h.MoveDirection
+	local velocity = Vector3.zero
+
+	if move.Magnitude > 0 then
+		velocity = move * State.FlySpeed
+	end
+
+	FlyVel.VectorVelocity = velocity
+	hrp.AssemblyAngularVelocity = Vector3.zero
+end)
+
+--// NOCLIP
+Connect(RunService.Stepped,function()
+	if not State.Noclip then return end
+
+	local c = GetChar()
+	if not c then return end
+
+	for _,v in pairs(c:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.CanCollide = false
+		end
+	end
 end)
 
 --// CLICK TP
-Connect(UIS.TouchTap, function(pos, gp)
+local lastTapTime = 0
 
-    if gp then
-        return
-    end
+Connect(UIS.InputBegan,function(input,gp)
+	if gp then return end
+	if not State.ClickTP then return end
 
-    if not State.ClickTP then
-        return
-    end
+	if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+		return
+	end
 
-    local cam = Workspace.CurrentCamera
+	local currentTime = tick()
+	if currentTime - lastTapTime < 0.3 then
+		local cam = Workspace.CurrentCamera
+		if not cam then return end
 
-    if not cam then
-        return
-    end
+		local pos = input.Position 
+		local ray = cam:ViewportPointToRay(pos.X,pos.Y)
 
-    local touchPos = pos[1]
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
 
-    local ray = cam:ViewportPointToRay(
-        touchPos.X,
-        touchPos.Y
-    )
+		local c = GetChar()
+		if c then
+			params.FilterDescendantsInstances = {c}
+		end
 
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
+		local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
 
-    if Character then
-        params.FilterDescendantsInstances = {Character}
-    end
-
-    local result = Workspace:Raycast(
-        ray.Origin,
-        ray.Direction * 1000,
-        params
-    )
-
-    if result and RootPart then
-        RootPart.CFrame =
-            CFrame.new(result.Position + Vector3.new(0,5,0))
-    end
+		if result then
+			local _,_,hrp = GetChar()
+			if hrp then
+				hrp.CFrame = CFrame.new(result.Position + Vector3.new(0,5,0))
+			end
+		end
+		
+		lastTapTime = 0 
+	else
+		lastTapTime = currentTime
+	end
 end)
 
---// MOVEMENT BUTTONS
+--// MOVEMENT PAGE
 Button(MovementPage,"Toggle Fly",function()
-
-    if State.Fly then
-        StopFly()
-    else
-        StartFly()
-    end
+	if State.Fly then
+		StopFly()
+	else
+		StartFly()
+	end
 end)
 
 Button(MovementPage,"Toggle Noclip",function()
-
-    State.Noclip = not State.Noclip
-
-    Notify(
-        "ENI",
-        "Noclip: "..tostring(State.Noclip)
-    )
+	State.Noclip = not State.Noclip
+	Notify("ENI","Noclip: "..tostring(State.Noclip))
 end)
 
-Button(MovementPage,"Increase Fly Speed",function()
-
-    State.FlySpeed += 10
-
-    Notify(
-        "ENI",
-        "Fly Speed: "..State.FlySpeed
-    )
+Button(MovementPage,"Fly Speed +",function()
+	State.FlySpeed += 10
+	Notify("ENI","Speed: "..State.FlySpeed)
 end)
 
-Button(MovementPage,"Decrease Fly Speed",function()
-
-    State.FlySpeed = math.max(10, State.FlySpeed - 10)
-
-    Notify(
-        "ENI",
-        "Fly Speed: "..State.FlySpeed
-    )
+Button(MovementPage,"Fly Speed -",function()
+	State.FlySpeed -= 10
+	Notify("ENI","Speed: "..State.FlySpeed)
 end)
 
---// TELEPORT
+--// TP PAGE
 Button(TeleportPage,"Toggle ClickTP",function()
-
-    State.ClickTP = not State.ClickTP
-
-    Notify(
-        "ENI",
-        "ClickTP: "..tostring(State.ClickTP)
-    )
+	State.ClickTP = not State.ClickTP
+	Notify("ENI","ClickTP: "..tostring(State.ClickTP).." (Double Tap)")
 end)
 
---// UTILITY
+--// UTILITY PAGE
 Button(UtilityPage,"Hide GUI",function()
-
-    Main.Visible = false
-end)
-
-Button(UtilityPage,"Show GUI",function()
-
-    Main.Visible = true
+	Main.Visible = false
 end)
 
 Button(UtilityPage,"Destroy Script",function()
-
-    StopFly()
-
-    DisconnectAll()
-
-    GUI:Destroy()
-
-    getgenv().ENI_MOBILE_LOADED = false
+	for _,v in pairs(Connections) do
+		pcall(function()
+			v:Disconnect()
+		end)
+	end
+	if State.Fly then StopFly() end
+	GUI:Destroy()
 end)
 
 --// FLOAT TOGGLE
 Float.MouseButton1Click:Connect(function()
-
-    Main.Visible = not Main.Visible
+	Main.Visible = not Main.Visible
 end)
 
 --// FLOAT DRAG
 do
+	local dragging = false
+	local dragStart
+	local startPos
 
-    local dragging = false
-    local dragStart
-    local startPos
+	Float.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = Float.Position
+		end
+	end)
 
-    Float.InputBegan:Connect(function(input)
+	Float.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
 
-        if input.UserInputType == Enum.UserInputType.Touch then
+	Connect(UIS.InputChanged,function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local delta = input.Position - dragStart
 
-            dragging = true
-            dragStart = input.Position
-            startPos = Float.Position
-        end
-    end)
-
-    Float.InputEnded:Connect(function(input)
-
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    Connect(UIS.InputChanged, function(input)
-
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-
-            local delta = input.Position - dragStart
-
-            Float.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+			Float.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
 end
 
 --// MAIN DRAG
 do
+	local dragging = false
+	local dragStart
+	local startPos
 
-    local dragging = false
-    local dragStart
-    local startPos
+	Title.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = Main.Position
+		end
+	end)
 
-    Title.InputBegan:Connect(function(input)
+	Title.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
 
-        if input.UserInputType == Enum.UserInputType.Touch then
+	Connect(UIS.InputChanged,function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local delta = input.Position - dragStart
 
-            dragging = true
-            dragStart = input.Position
-            startPos = Main.Position
-        end
-    end)
-
-    Title.InputEnded:Connect(function(input)
-
-        if input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    Connect(UIS.InputChanged, function(input)
-
-        if dragging and input.UserInputType == Enum.UserInputType.Touch then
-
-            local delta = input.Position - dragStart
-
-            Main.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+			Main.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
 end
 
---// START
-Notify(
-    "ENI MOBILE HUB",
-    "Loaded Successfully"
-)
+Notify("ENI MOBILE HUB","Loaded Successfully v5.3")
