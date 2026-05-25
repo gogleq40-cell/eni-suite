@@ -1,6 +1,6 @@
 --[[
- ENI MOBILE HUB v7.1
- SMART TOGGLES + GOD MODE + BETTER ORGANIZATION
+ ENI MOBILE HUB v7.2
+ DIRECT SLIDERS + CFRAME SPEEDHACK
 ]]
 
 --// SERVICES
@@ -30,13 +30,12 @@ local State = {
 	Noclip = false,
 	ClickTP = false,
 	WalkSpeed = 16,
-	WalkSpeedEnabled = false,
 	JumpPower = 50,
-	JumpPowerEnabled = false,
 	InfJump = false,
 	GodMode = false,
 	ESP = false,
-	Chams = false
+	Chams = false,
+	Speedhack = 0 -- Новая функция!
 }
 
 local Connections = {}
@@ -285,16 +284,7 @@ local function Toggle(parent, text, defaultState, callback)
 		callback(state)
 	end)
 	
-	-- Возвращаем функцию принудительной смены стейта (для Smart Toggles)
-	local function forceState(newState)
-		if state ~= newState then
-			state = newState
-			updateVis()
-			callback(state)
-		end
-	end
-	
-	return b, forceState
+	return b
 end
 
 local function Slider(parent, text, min, max, default, callback)
@@ -396,8 +386,6 @@ end
 Connect(LP.CharacterAdded, function()
 	if State.Fly then StopFly() end
 	State.Noclip = false
-	State.WalkSpeedEnabled = false
-	State.JumpPowerEnabled = false
 	State.GodMode = false
 end)
 
@@ -429,15 +417,17 @@ Connect(RunService.RenderStepped,function()
 		hrp.AssemblyAngularVelocity = Vector3.zero
 	end
 	
-	-- SPEED & JUMP MODS
+	-- SPEED & JUMP MODS (Абсолютный контроль, всегда ставим значение со слайдера)
 	if h then
-		if State.WalkSpeedEnabled then
-			h.WalkSpeed = State.WalkSpeed
-		end
-		if State.JumpPowerEnabled then
-			h.UseJumpPower = true
-			h.JumpPower = State.JumpPower
-		end
+		h.WalkSpeed = State.WalkSpeed
+		h.UseJumpPower = true
+		h.JumpPower = State.JumpPower
+	end
+	
+	-- CFRAME SPEEDHACK
+	if State.Speedhack > 0 and h and hrp and h.MoveDirection.Magnitude > 0 and not State.Fly then
+		-- Сдвигает персонажа на дополнительные стады микротелепортами (bypasses WalkSpeed)
+		hrp.CFrame = hrp.CFrame + (h.MoveDirection * (State.Speedhack / 5))
 	end
 	
 	-- ESP & CHAMS LOGIC
@@ -569,20 +559,19 @@ end)
 --=============================
 
 --// MOVEMENT 
-local flyToggleBtn, setFlyToggle = Toggle(MovementPage, "Enable Fly", false, function(val)
+Toggle(MovementPage, "Enable Fly", false, function(val)
 	if val then StartFly() else StopFly() end
 end)
 
 Slider(MovementPage, "Fly Speed", 10, 300, 90, function(val)
 	State.FlySpeed = val
-	if not State.Fly then setFlyToggle(true) end
 end)
 
 Toggle(MovementPage, "Enable Noclip", false, function(val)
 	State.Noclip = val
 end)
 
---// PLAYER (SMART TOGGLES)
+--// PLAYER (Прямое управление)
 Toggle(PlayerPage, "God Mode (Invincible)", false, function(val)
 	State.GodMode = val
 end)
@@ -591,24 +580,17 @@ Toggle(PlayerPage, "Infinite Jump", false, function(val)
 	State.InfJump = val
 end)
 
-local wsToggleBtn, setWsToggle = Toggle(PlayerPage, "Enable Custom Speed", false, function(val)
-	State.WalkSpeedEnabled = val
-end)
-
+-- Ползунки без тумблеров. Стандартное значение: WalkSpeed=16, Jump=50
 Slider(PlayerPage, "WalkSpeed", 16, 200, 16, function(val)
 	State.WalkSpeed = val
-	-- Smart Toggle: automatically enable when sliding
-	if not State.WalkSpeedEnabled then setWsToggle(true) end 
-end)
-
-local jpToggleBtn, setJpToggle = Toggle(PlayerPage, "Enable Custom Jump", false, function(val)
-	State.JumpPowerEnabled = val
 end)
 
 Slider(PlayerPage, "JumpPower", 50, 300, 50, function(val)
 	State.JumpPower = val
-	-- Smart Toggle: automatically enable when sliding
-	if not State.JumpPowerEnabled then setJpToggle(true) end
+end)
+
+Slider(PlayerPage, "CFrame Speedhack", 0, 10, 0, function(val)
+	State.Speedhack = val
 end)
 
 --// VISUALS
@@ -701,5 +683,5 @@ end
 MakeDraggable(Float, Float)
 MakeDraggable(Main, Title)
 
-Notify("ENI HUB", "Loaded Premium v7.1")
+Notify("ENI HUB", "Loaded v7.2 - Спидхак")
 Main.Visible = true
