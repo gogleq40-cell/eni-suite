@@ -1,6 +1,6 @@
 --[[
- ENI MOBILE HUB v6.2
- MODERN UI + PERFECT 3D MOBILE FLY (UP/DOWN FIXED)
+ ENI MOBILE HUB v7.0
+ PREMIUM UI (TOGGLES & SLIDERS) + ESP + PLAYER TP + MOVEMENT MODS
 ]]
 
 --// SERVICES
@@ -26,12 +26,20 @@ end)
 --// STATE
 local State = {
 	Fly = false,
+	FlySpeed = 90,
 	Noclip = false,
 	ClickTP = false,
-	FlySpeed = 90
+	WalkSpeed = 16,
+	WalkSpeedEnabled = false,
+	JumpPower = 50,
+	JumpPowerEnabled = false,
+	InfJump = false,
+	ESP = false,
+	Chams = false
 }
 
 local Connections = {}
+local TargetPlayer = nil
 
 local function Connect(signal, func)
 	local c = signal:Connect(func)
@@ -55,7 +63,7 @@ local function GetChar()
 end
 
 --=============================
---       MODERN UI SETUP
+--       PREMIUM UI SETUP
 --=============================
 
 local GUI = Instance.new("ScreenGui")
@@ -82,8 +90,8 @@ FloatStroke.Parent = Float
 
 --// MAIN MENU
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 320, 0, 360)
-Main.Position = UDim2.new(0.5, -160, 0.5, -180)
+Main.Size = UDim2.new(0, 340, 0, 380)
+Main.Position = UDim2.new(0.5, -170, 0.5, -190)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 Main.BorderSizePixel = 0
 Main.Visible = false
@@ -110,10 +118,12 @@ local TitlePad = Instance.new("UIPadding", Title)
 TitlePad.PaddingLeft = UDim.new(0, 15)
 
 --// TAB BAR
-local TabBar = Instance.new("Frame")
+local TabBar = Instance.new("ScrollingFrame")
 TabBar.Size = UDim2.new(1, -24, 0, 35)
 TabBar.Position = UDim2.new(0, 12, 0, 45)
 TabBar.BackgroundTransparency = 1
+TabBar.ScrollBarThickness = 0
+TabBar.CanvasSize = UDim2.new(1.3, 0, 0, 0)
 TabBar.Parent = Main
 
 local TabLayout = Instance.new("UIListLayout")
@@ -138,7 +148,7 @@ local function CreatePage(name)
 	page.Size = UDim2.new(1, 0, 1, 0)
 	page.BackgroundTransparency = 1
 	page.Visible = false
-	page.ScrollBarThickness = 3
+	page.ScrollBarThickness = 2
 	page.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 95)
 	page.BorderSizePixel = 0
 	
@@ -151,7 +161,7 @@ local function CreatePage(name)
 	layout.Parent = page
 	
 	local pad = Instance.new("UIPadding", page)
-	pad.PaddingRight = UDim.new(0, 6)
+	pad.PaddingRight = UDim.new(0, 8)
 
 	Pages[name] = page
 	return page
@@ -171,9 +181,9 @@ local function SwitchPage(name)
 	Pages[name].Visible = true
 end
 
-local function CreateTab(name)
+local function CreateTab(name, width)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(0.33, -4, 1, 0)
+	b.Size = UDim2.new(0, width, 1, 0)
 	b.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
 	b.Text = name
 	b.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -190,16 +200,18 @@ local function CreateTab(name)
 end
 
 local MovementPage = CreatePage("Movement")
+local VisualsPage = CreatePage("Visuals")
 local TeleportPage = CreatePage("Teleport")
 local UtilityPage = CreatePage("Utility")
 
-CreateTab("Movement")
-CreateTab("Teleport")
-CreateTab("Utility")
+CreateTab("Movement", 80)
+CreateTab("Visuals", 70)
+CreateTab("Teleport", 75)
+CreateTab("Utility", 65)
 
 SwitchPage("Movement")
 
---// MODERN BUTTON COMPONENT
+--// PREMIUM COMPONENTS
 local function Button(parent, text, callback)
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, 42)
@@ -219,9 +231,119 @@ local function Button(parent, text, callback)
 		TweenService:Create(b, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(99, 102, 241)}):Play()
 		task.wait(0.1)
 		TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 32)}):Play()
-		callback()
+		callback(b)
 	end)
 	return b
+end
+
+local function Toggle(parent, text, defaultState, callback)
+	local state = defaultState or false
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1, 0, 0, 42)
+	b.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+	b.Text = ""
+	b.Parent = parent
+
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(45, 45, 55)
+	stroke.Parent = b
+
+	local label = Instance.new("TextLabel", b)
+	label.Size = UDim2.new(1, -50, 1, 0)
+	label.Position = UDim2.new(0, 15, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(220, 220, 220)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 14
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	local indicator = Instance.new("Frame", b)
+	indicator.Size = UDim2.new(0, 20, 0, 20)
+	indicator.Position = UDim2.new(1, -32, 0.5, -10)
+	indicator.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 6)
+	
+	local function updateVis()
+		if state then
+			TweenService:Create(indicator, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(99, 102, 241)}):Play()
+			TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(99, 102, 241)}):Play()
+		else
+			TweenService:Create(indicator, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+			TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(45, 45, 55)}):Play()
+		end
+	end
+	updateVis()
+
+	b.MouseButton1Click:Connect(function()
+		state = not state
+		updateVis()
+		callback(state)
+	end)
+	return b
+end
+
+local function Slider(parent, text, min, max, default, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 55)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+	frame.Parent = parent
+
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(45, 45, 55)
+	stroke.Parent = frame
+
+	local label = Instance.new("TextLabel", frame)
+	label.Size = UDim2.new(1, -20, 0, 25)
+	label.Position = UDim2.new(0, 15, 0, 4)
+	label.BackgroundTransparency = 1
+	label.Text = text .. ": " .. default
+	label.TextColor3 = Color3.fromRGB(220, 220, 220)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	local bg = Instance.new("Frame", frame)
+	bg.Size = UDim2.new(1, -30, 0, 6)
+	bg.Position = UDim2.new(0, 15, 0, 35)
+	bg.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+
+	local fill = Instance.new("Frame", bg)
+	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+	local btn = Instance.new("TextButton", bg)
+	btn.Size = UDim2.new(1, 0, 1, 0)
+	btn.Position = UDim2.new(0,0,-2,0)
+	btn.Size = UDim2.new(1,0,5,0)
+	btn.BackgroundTransparency = 1
+	btn.Text = ""
+
+	local dragging = false
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+		end
+	end)
+	btn.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	Connect(UIS.InputChanged, function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local relativeX = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+			fill.Size = UDim2.new(relativeX, 0, 1, 0)
+			local val = math.floor(min + ((max - min) * relativeX))
+			label.Text = text .. ": " .. val
+			callback(val)
+		end
+	end)
 end
 
 --=============================
@@ -234,14 +356,10 @@ local FlyAtt
 
 local function StopFly()
 	State.Fly = false
-	State.Noclip = false
-
 	local c,h = GetChar()
 	if h then h.PlatformStand = false end
-
 	if FlyVel then FlyVel:Destroy() FlyVel = nil end
 	if FlyAtt then FlyAtt:Destroy() FlyAtt = nil end
-	Notify("ENI", "Fly & Noclip Disabled")
 end
 
 local function StartFly()
@@ -250,7 +368,6 @@ local function StartFly()
 	if not hrp then return end
 
 	State.Fly = true
-	State.Noclip = true
 	h.PlatformStand = true
 
 	FlyAtt = Instance.new("Attachment", hrp)
@@ -260,61 +377,137 @@ local function StartFly()
 	FlyVel.VectorVelocity = Vector3.zero
 	FlyVel.RelativeTo = Enum.ActuatorRelativeTo.World
 	FlyVel.Parent = hrp
-
 	hrp.AssemblyLinearVelocity = Vector3.zero
-	Notify("ENI", "Fly & Noclip Enabled")
 end
 
 Connect(LP.CharacterAdded, function()
 	if State.Fly then StopFly() end
-	if State.Noclip then State.Noclip = false end
+	State.Noclip = false
+	State.WalkSpeedEnabled = false
+	State.JumpPowerEnabled = false
 end)
 
---// 3D MOBILE FLY LOOP (PERFECTED)
+--// RENDER STEPPED (Fly, Movement Mods, ESP)
 Connect(RunService.RenderStepped,function()
-	if not State.Fly or not FlyVel then return end
 	local c,h,hrp = GetChar()
-	if not hrp then return end
+	
+	-- FLY LOGIC
+	if State.Fly and FlyVel and hrp and h then
+		local move = h.MoveDirection
+		local velocity = Vector3.zero
 
-	local move = h.MoveDirection
-	local velocity = Vector3.zero
-
-	if move.Magnitude > 0 then
-		local cam = Workspace.CurrentCamera
-		if cam then
-			local camCF = cam.CFrame
-			
-			-- Получаем только угол поворота влево-вправо (Yaw)
-			local _, yaw, _ = camCF:ToOrientation()
-			
-			-- Создаем "плоский" CFrame без наклона вверх/вниз
-			local flatCF = CFrame.Angles(0, yaw, 0)
-			
-			-- Преобразуем движение джойстика в локальные оси (вперед/назад, влево/вправо)
-			local localInput = flatCF:VectorToObjectSpace(move)
-			
-			-- Накладываем эти оси на реальный 3D-угол камеры
-			local move3D = camCF:VectorToWorldSpace(localInput)
-			
-			if move3D.Magnitude > 0 then
-				velocity = move3D.Unit * State.FlySpeed
+		if move.Magnitude > 0 then
+			local cam = Workspace.CurrentCamera
+			if cam then
+				local camCF = cam.CFrame
+				local _, yaw, _ = camCF:ToOrientation()
+				local flatCF = CFrame.Angles(0, yaw, 0)
+				local localInput = flatCF:VectorToObjectSpace(move)
+				local move3D = camCF:VectorToWorldSpace(localInput)
+				if move3D.Magnitude > 0 then
+					velocity = move3D.Unit * State.FlySpeed
+				end
+			else
+				velocity = move * State.FlySpeed
 			end
-		else
-			velocity = move * State.FlySpeed
+		end
+		FlyVel.VectorVelocity = velocity
+		hrp.AssemblyAngularVelocity = Vector3.zero
+	end
+	
+	-- SPEED & JUMP MODS
+	if h then
+		if State.WalkSpeedEnabled then
+			h.WalkSpeed = State.WalkSpeed
+		end
+		if State.JumpPowerEnabled then
+			h.UseJumpPower = true
+			h.JumpPower = State.JumpPower
 		end
 	end
+	
+	-- ESP & CHAMS LOGIC
+	if State.ESP or State.Chams then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local targetHrp = p.Character.HumanoidRootPart
+				
+				-- Chams
+				if State.Chams then
+					local hl = p.Character:FindFirstChild("ENI_Chams")
+					if not hl then
+						hl = Instance.new("Highlight")
+						hl.Name = "ENI_Chams"
+						hl.FillColor = Color3.fromRGB(99, 102, 241)
+						hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+						hl.Parent = p.Character
+					end
+					hl.Enabled = true
+				else
+					local hl = p.Character:FindFirstChild("ENI_Chams")
+					if hl then hl.Enabled = false end
+				end
 
-	FlyVel.VectorVelocity = velocity
-	hrp.AssemblyAngularVelocity = Vector3.zero
+				-- ESP Names
+				if State.ESP then
+					local bg = targetHrp:FindFirstChild("ENI_ESP")
+					if not bg then
+						bg = Instance.new("BillboardGui")
+						bg.Name = "ENI_ESP"
+						bg.Size = UDim2.new(0, 200, 0, 50)
+						bg.StudsOffset = Vector3.new(0, 3, 0)
+						bg.AlwaysOnTop = true
+						
+						local txt = Instance.new("TextLabel")
+						txt.Size = UDim2.new(1, 0, 1, 0)
+						txt.BackgroundTransparency = 1
+						txt.Text = p.Name
+						txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+						txt.TextStrokeTransparency = 0.5
+						txt.Font = Enum.Font.GothamBold
+						txt.TextSize = 14
+						txt.Parent = bg
+						bg.Parent = targetHrp
+					end
+					bg.Enabled = true
+				else
+					local bg = targetHrp:FindFirstChild("ENI_ESP")
+					if bg then bg.Enabled = false end
+				end
+			end
+		end
+	end
 end)
 
---// NOCLIP
+--// CLEAN ESP
+local function CleanESP()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p.Character then
+			local bg = p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("ENI_ESP")
+			if bg then bg:Destroy() end
+			local hl = p.Character:FindFirstChild("ENI_Chams")
+			if hl then hl:Destroy() end
+		end
+	end
+end
+
+--// STEPPED (Noclip)
 Connect(RunService.Stepped,function()
 	if not State.Noclip then return end
 	local c = GetChar()
 	if not c then return end
 	for _,v in pairs(c:GetDescendants()) do
 		if v:IsA("BasePart") then v.CanCollide = false end
+	end
+end)
+
+--// INF JUMP
+Connect(UIS.JumpRequest, function()
+	if State.InfJump then
+		local c, h = GetChar()
+		if h then
+			h:ChangeState(Enum.HumanoidStateType.Jumping)
+		end
 	end
 end)
 
@@ -348,31 +541,87 @@ Connect(UIS.InputBegan,function(input,gp)
 	end
 end)
 
---// BUTTONS BINDING
-Button(MovementPage, "Toggle Fly", function()
-	if State.Fly then StopFly() else StartFly() end
+--=============================
+--       PAGES BINDING
+--=============================
+
+-- MOVEMENT
+Toggle(MovementPage, "Enable Fly", false, function(val)
+	if val then StartFly() else StopFly() end
 end)
 
-Button(MovementPage, "Toggle Noclip", function()
-	State.Noclip = not State.Noclip
-	Notify("ENI", "Noclip: " .. tostring(State.Noclip))
+Slider(MovementPage, "Fly Speed", 10, 300, 90, function(val)
+	State.FlySpeed = val
 end)
 
-Button(MovementPage, "Fly Speed +10", function()
-	State.FlySpeed += 10
-	Notify("ENI", "Speed: " .. State.FlySpeed)
+Toggle(MovementPage, "Enable Noclip", false, function(val)
+	State.Noclip = val
 end)
 
-Button(MovementPage, "Fly Speed -10", function()
-	State.FlySpeed -= 10
-	Notify("ENI", "Speed: " .. State.FlySpeed)
+Toggle(MovementPage, "Custom WalkSpeed", false, function(val)
+	State.WalkSpeedEnabled = val
 end)
 
-Button(TeleportPage, "Toggle ClickTP", function()
-	State.ClickTP = not State.ClickTP
-	Notify("ENI", "ClickTP: " .. tostring(State.ClickTP) .. " (Double Tap)")
+Slider(MovementPage, "WalkSpeed", 16, 200, 16, function(val)
+	State.WalkSpeed = val
 end)
 
+Toggle(MovementPage, "Custom JumpPower", false, function(val)
+	State.JumpPowerEnabled = val
+end)
+
+Slider(MovementPage, "JumpPower", 50, 300, 50, function(val)
+	State.JumpPower = val
+end)
+
+Toggle(MovementPage, "Infinite Jump", false, function(val)
+	State.InfJump = val
+end)
+
+-- VISUALS
+Toggle(VisualsPage, "Player Names (ESP)", false, function(val)
+	State.ESP = val
+	if not val and not State.Chams then CleanESP() end
+end)
+
+Toggle(VisualsPage, "Player Chams", false, function(val)
+	State.Chams = val
+	if not val and not State.ESP then CleanESP() end
+end)
+
+-- TELEPORT
+Toggle(TeleportPage, "Double-Tap ClickTP", false, function(val)
+	State.ClickTP = val
+end)
+
+Button(TeleportPage, "Target: None", function(btn)
+	local valid = {}
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= LP then table.insert(valid, p) end
+	end
+	if #valid == 0 then Notify("ENI", "No other players found") return end
+	
+	local currentIndex = TargetPlayer and table.find(valid, TargetPlayer) or 0
+	local nextIndex = (currentIndex % #valid) + 1
+	TargetPlayer = valid[nextIndex]
+	
+	btn.Text = "Target: " .. TargetPlayer.Name
+end)
+
+Button(TeleportPage, "Teleport To Target", function()
+	if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local _,_,hrp = GetChar()
+		if hrp then
+			-- ТП за спину на 3 стада
+			hrp.CFrame = TargetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+			Notify("ENI", "Teleported to " .. TargetPlayer.Name)
+		end
+	else
+		Notify("ENI", "Target is dead or invalid")
+	end
+end)
+
+-- UTILITY
 Button(UtilityPage, "Hide GUI", function()
 	Main.Visible = false
 end)
@@ -380,6 +629,7 @@ end)
 Button(UtilityPage, "Destroy Script", function()
 	for _,v in pairs(Connections) do pcall(function() v:Disconnect() end) end
 	if State.Fly then StopFly() end
+	CleanESP()
 	GUI:Destroy()
 end)
 
@@ -419,5 +669,5 @@ end
 MakeDraggable(Float, Float)
 MakeDraggable(Main, Title)
 
-Notify("ENI HUB", "Loaded v6.2")
+Notify("ENI HUB", "Loaded Premium v7.0")
 Main.Visible = true
