@@ -1,6 +1,6 @@
 --[[
- ENI MOBILE HUB v7.0
- PREMIUM UI (TOGGLES & SLIDERS) + ESP + PLAYER TP + MOVEMENT MODS
+ ENI MOBILE HUB v7.1
+ SMART TOGGLES + GOD MODE + BETTER ORGANIZATION
 ]]
 
 --// SERVICES
@@ -34,6 +34,7 @@ local State = {
 	JumpPower = 50,
 	JumpPowerEnabled = false,
 	InfJump = false,
+	GodMode = false,
 	ESP = false,
 	Chams = false
 }
@@ -200,14 +201,16 @@ local function CreateTab(name, width)
 end
 
 local MovementPage = CreatePage("Movement")
+local PlayerPage = CreatePage("Player")
 local VisualsPage = CreatePage("Visuals")
 local TeleportPage = CreatePage("Teleport")
 local UtilityPage = CreatePage("Utility")
 
 CreateTab("Movement", 80)
-CreateTab("Visuals", 70)
+CreateTab("Player", 60)
+CreateTab("Visuals", 65)
 CreateTab("Teleport", 75)
-CreateTab("Utility", 65)
+CreateTab("Utility", 60)
 
 SwitchPage("Movement")
 
@@ -281,7 +284,17 @@ local function Toggle(parent, text, defaultState, callback)
 		updateVis()
 		callback(state)
 	end)
-	return b
+	
+	-- Возвращаем функцию принудительной смены стейта (для Smart Toggles)
+	local function forceState(newState)
+		if state ~= newState then
+			state = newState
+			updateVis()
+			callback(state)
+		end
+	end
+	
+	return b, forceState
 end
 
 local function Slider(parent, text, min, max, default, callback)
@@ -385,6 +398,7 @@ Connect(LP.CharacterAdded, function()
 	State.Noclip = false
 	State.WalkSpeedEnabled = false
 	State.JumpPowerEnabled = false
+	State.GodMode = false
 end)
 
 --// RENDER STEPPED (Fly, Movement Mods, ESP)
@@ -491,13 +505,22 @@ local function CleanESP()
 	end
 end
 
---// STEPPED (Noclip)
+--// STEPPED (Noclip & GodMode)
 Connect(RunService.Stepped,function()
-	if not State.Noclip then return end
-	local c = GetChar()
+	local c, h = GetChar()
 	if not c then return end
-	for _,v in pairs(c:GetDescendants()) do
-		if v:IsA("BasePart") then v.CanCollide = false end
+	
+	-- GodMode Logic (Infinite Health)
+	if State.GodMode and h then
+		h.MaxHealth = math.huge
+		h.Health = math.huge
+	end
+
+	-- Noclip Logic
+	if State.Noclip then
+		for _,v in pairs(c:GetDescendants()) do
+			if v:IsA("BasePart") then v.CanCollide = false end
+		end
 	end
 end)
 
@@ -545,40 +568,50 @@ end)
 --       PAGES BINDING
 --=============================
 
--- MOVEMENT
-Toggle(MovementPage, "Enable Fly", false, function(val)
+--// MOVEMENT 
+local flyToggleBtn, setFlyToggle = Toggle(MovementPage, "Enable Fly", false, function(val)
 	if val then StartFly() else StopFly() end
 end)
 
 Slider(MovementPage, "Fly Speed", 10, 300, 90, function(val)
 	State.FlySpeed = val
+	if not State.Fly then setFlyToggle(true) end
 end)
 
 Toggle(MovementPage, "Enable Noclip", false, function(val)
 	State.Noclip = val
 end)
 
-Toggle(MovementPage, "Custom WalkSpeed", false, function(val)
-	State.WalkSpeedEnabled = val
+--// PLAYER (SMART TOGGLES)
+Toggle(PlayerPage, "God Mode (Invincible)", false, function(val)
+	State.GodMode = val
 end)
 
-Slider(MovementPage, "WalkSpeed", 16, 200, 16, function(val)
-	State.WalkSpeed = val
-end)
-
-Toggle(MovementPage, "Custom JumpPower", false, function(val)
-	State.JumpPowerEnabled = val
-end)
-
-Slider(MovementPage, "JumpPower", 50, 300, 50, function(val)
-	State.JumpPower = val
-end)
-
-Toggle(MovementPage, "Infinite Jump", false, function(val)
+Toggle(PlayerPage, "Infinite Jump", false, function(val)
 	State.InfJump = val
 end)
 
--- VISUALS
+local wsToggleBtn, setWsToggle = Toggle(PlayerPage, "Enable Custom Speed", false, function(val)
+	State.WalkSpeedEnabled = val
+end)
+
+Slider(PlayerPage, "WalkSpeed", 16, 200, 16, function(val)
+	State.WalkSpeed = val
+	-- Smart Toggle: automatically enable when sliding
+	if not State.WalkSpeedEnabled then setWsToggle(true) end 
+end)
+
+local jpToggleBtn, setJpToggle = Toggle(PlayerPage, "Enable Custom Jump", false, function(val)
+	State.JumpPowerEnabled = val
+end)
+
+Slider(PlayerPage, "JumpPower", 50, 300, 50, function(val)
+	State.JumpPower = val
+	-- Smart Toggle: automatically enable when sliding
+	if not State.JumpPowerEnabled then setJpToggle(true) end
+end)
+
+--// VISUALS
 Toggle(VisualsPage, "Player Names (ESP)", false, function(val)
 	State.ESP = val
 	if not val and not State.Chams then CleanESP() end
@@ -589,7 +622,7 @@ Toggle(VisualsPage, "Player Chams", false, function(val)
 	if not val and not State.ESP then CleanESP() end
 end)
 
--- TELEPORT
+--// TELEPORT
 Toggle(TeleportPage, "Double-Tap ClickTP", false, function(val)
 	State.ClickTP = val
 end)
@@ -612,7 +645,6 @@ Button(TeleportPage, "Teleport To Target", function()
 	if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
 		local _,_,hrp = GetChar()
 		if hrp then
-			-- ТП за спину на 3 стада
 			hrp.CFrame = TargetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
 			Notify("ENI", "Teleported to " .. TargetPlayer.Name)
 		end
@@ -621,7 +653,7 @@ Button(TeleportPage, "Teleport To Target", function()
 	end
 end)
 
--- UTILITY
+--// UTILITY
 Button(UtilityPage, "Hide GUI", function()
 	Main.Visible = false
 end)
@@ -669,5 +701,5 @@ end
 MakeDraggable(Float, Float)
 MakeDraggable(Main, Title)
 
-Notify("ENI HUB", "Loaded Premium v7.0")
+Notify("ENI HUB", "Loaded Premium v7.1")
 Main.Visible = true
